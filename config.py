@@ -6,9 +6,6 @@ class Config(object):
   BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
   OWNER_ID = 1162032262
   PORT = int(os.environ.get("PORT", "8080"))
-  WEBURL = os.environ.get("WEBURL", "")
-  #AUTHIG = {str(x) for x in os.environ.get("AUTHIG", "1162032262").split()}
   AUTHJS = {str(x) for x in os.environ.get("AUTHJS", "1162032262").split()}
-  #AUTHQT = {str(x) for x in os.environ.get("AUTHQT", "1162032262").split()}
   HOST = os.environ.get("HOST", "0.0.0.0")
   LOGS = int(os.environ.get("LOGS", "-1002396416731"))
