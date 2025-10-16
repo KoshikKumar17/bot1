@@ -4,7 +4,9 @@ import uuid
 import shutil
 import asyncio
 import aiohttp
+import requests
 import aiofiles
+from mutagen.mp4 import MP4, MP4Cover
 from pyrogram import Client, filters, enums
 from config import Config
 
@@ -51,9 +53,9 @@ async def jiosaavndl(client, message):
             
             # File paths
             afile = os.path.join(download_dir, f"{title}.mp4")
-            mp3_file = os.path.join(download_dir, f"{title}_temp.mp3")
-            ofile = os.path.join(download_dir, f"{title} - {artist}.mp3")
-            cover_image_path = os.path.join(download_dir, f"{title}.jpg")
+            #mp3_file = os.path.join(download_dir, f"{title}_temp.mp3")
+            ofile = os.path.join(download_dir, f"{title} - {artist}.m4a")
+            #cover_image_path = os.path.join(download_dir, f"{title}.jpg")
             
             # Download the Song
             async with aiohttp.ClientSession() as session:
@@ -66,37 +68,39 @@ async def jiosaavndl(client, message):
                         return
             
             # Rename the downloaded file to .mp3
-            os.rename(afile, mp3_file)
-            
+            #os.rename(afile, mp3_file)
+
+            ---- useless
             # Download the Cover Art
-            async with aiohttp.ClientSession() as session:
-                async with session.get(img_url) as response:
-                    if response.status == 200:
-                        async with aiofiles.open(cover_image_path, mode='wb') as f:
-                            await f.write(await response.read())
-                    else:
-                        cover_image_path = None
+            #async with aiohttp.ClientSession() as session:
+                #async with session.get(img_url) as response:
+                    #if response.status == 200:
+                        #async with aiofiles.open(cover_image_path, mode='wb') as f:
+                            #await f.write(await response.read())
+                    #else:
+                        #cover_image_path = None
+            --- useless
             
-            # Use ffmpeg to Add Metadata
-            process = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-i", mp3_file,
-                "-i", cover_image_path,
-                "-map", "0:a", "-map", "1:v",
-                "-metadata", f"title={title}",
-                "-metadata", f"artist={artist}",
-                "-metadata", f"album={album}",
-                "-metadata", f"date={year}",
-                "-metadata", f"comment={cmnt}",
-                "-metadata", f"copyright={copyright_info}",
-                "-id3v2_version", "3",
-                "-c:a", "libmp3lame",
-                "-c:v", "mjpeg",
-                "-y",
-                ofile, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-            stdout, stderr = await process.communicate()
-            if process.returncode != 0:
-                await k.edit_text(f"**Error adding metadata with ffmpeg:** \n`{process.stderr.decode()}`")
-                return
+            img_response = requests.get(img_url)
+            cover_art = img_response.content if img_response.status_code == 200 else None
+            
+            try:
+                audio = MP4(afile)
+                audio["\xa9nam"] = title
+                audio["\xa9alb"] = album
+                audio["\xa9ART"] = artist
+                audio["\xa9day"] = year
+                audio["\xa9cmt"] = cmnt
+                audio["cprt"] = copyright_info
+                if cover_art:
+                    audio["covr"] = [MP4Cover(cover_art, imageformat=MP4Cover.FORMAT_JPEG)]
+                audio.save()
+            except Exception as e:
+                await k.edit_text(str(e))
+
+            # Rename the file to .m4a
+            os.rename(afile, ofile)
+
             
             # Step 5: Send the Song
             caption = f"""**Title:** {title}\n\n**Artists:** {artist}\n\n**Album:** {album}"""
