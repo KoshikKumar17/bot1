@@ -2,8 +2,6 @@ pyrogram
 asyncio
 TgCrypto
 requests
-#googletrans==4.0.0-rc1
+mutagen
 aiofiles
-bing-image-urls
 aiohttp
-#instaloader
