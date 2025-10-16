@@ -1,0 +1,72 @@
+import os
+import wget
+import requests
+import subprocess
+from mutagen.mp4 import MP4, MP4Cover
+from pyrogram import Client, enums
+from config import Config
+
+async def jiosaavndl(client, message):
+    if str(message.from_user.id) not in Config.AUTHJS:
+        return
+    await message.reply_chat_action(enums.ChatAction.TYPING)
+    text = message.text.strip()
+    api = f"https://jiosaavnsearch.vercel.app/songs?link={text}"
+    
+    if "jiosaavn.com/song" in text:
+        k = await message.reply_text("**Processing...**", quote=True)
+        req = requests.get(api).json()
+        res = req['data'][0]
+        
+        title = res['name']
+        durn = res['duration']
+        artist = res['primaryArtists']
+        song = res['downloadUrl'][3]['link']
+        album = res['album']['name']
+        year = res['year']
+        url = res['url']
+        cprt = res['copyright']
+        img_url = res['image'][2]['link']
+        cmnt = f"(c) Koshik Kumar - {url}"
+        
+        afile = wget.download(song)
+
+        img_response = requests.get(img_url)
+        cover_art = img_response.content if img_response.status_code == 200 else None
+
+        try:
+            audio = MP4(afile)
+            audio["\xa9nam"] = title
+            audio["\xa9alb"] = album
+            audio["\xa9ART"] = artist
+            audio["\xa9day"] = year
+            audio["\xa9cmt"] = cmnt
+            audio["cprt"] = cprt
+            if cover_art:
+                audio["covr"] = [MP4Cover(cover_art, imageformat=MP4Cover.FORMAT_JPEG)]
+            audio.save()
+        except Exception as e:
+            await k.edit_text(str(e))
+
+        filetemp = f"{title}_temp.mp4"
+        os.rename(afile, filetemp)
+        ofile = f"{title}.mp3"
+
+        # Convert to MP3 while preserving original bitrate
+        subprocess.run(["ffmpeg", "-i", filetemp, "-c:a", "libmp3lame", "-y", ofile])
+
+        await k.edit_text("**Done... Sending music**")
+        caption = f"""**Title:** {title}\n\n**Artists:** {artist}\n\n**Album:** {album}"""
+
+        await message.reply_chat_action(enums.ChatAction.UPLOAD_AUDIO)
+        await message.reply_audio(
+            audio=ofile,
+            duration=int(durn),
+            caption=caption,
+            performer=artist,
+            title=title,
+            quote=True
+        )
+        os.remove(filetemp)
+        os.remove(ofile)
+        await k.delete()
